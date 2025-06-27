@@ -9,6 +9,7 @@ public class RisingPlatformZone : MonoBehaviour
     private bool playerOnPlatform = false;
     private bool playerInZone = false;
     private float risenDistance = 0f;
+    private bool falling = false;
 
     void Start()
     {
@@ -23,7 +24,29 @@ public class RisingPlatformZone : MonoBehaviour
 
     void Update()
     {
-        if (playerInZone && playerOnPlatform && risenDistance < maxRiseDistance)
+        // Prevent errors if the platform has been destroyed
+        if (platform == null) return;
+        // If falling is triggered externally, platform will fall in Update
+    
+        if (falling)
+        {
+            // Fall down until reaching initial position
+            float fallStep = riseSpeed * 1.5f * Time.deltaTime; // Falls a bit faster than rise
+            Vector3 target = initialPlatformPosition;
+            if (platform.position.y > target.y)
+            {
+                float newY = Mathf.MoveTowards(platform.position.y, target.y, fallStep);
+                platform.position = new Vector3(platform.position.x, newY, platform.position.z);
+                risenDistance = Mathf.Max(0f, risenDistance - (platform.position.y - newY));
+            }
+            if (Mathf.Approximately(platform.position.y, target.y))
+            {
+                platform.position = target;
+                risenDistance = 0f;
+                falling = false;
+            }
+        }
+        else if (playerInZone && playerOnPlatform && risenDistance < maxRiseDistance)
         {
             float riseStep = riseSpeed * Time.deltaTime;
             platform.position += new Vector3(0, riseStep, 0);
@@ -69,6 +92,32 @@ public class RisingPlatformZone : MonoBehaviour
     public void SetPlayerOnPlatform(bool onPlatform)
     {
         playerOnPlatform = onPlatform;
+    }
+
+    // Called by PlatformResetListener to trigger the platform to fall
+    public void TriggerPlatformFall()
+    {
+        if (!falling && platform.position.y > initialPlatformPosition.y + 0.01f)
+        {
+            Debug.Log("[RisingPlatformZone] TriggerPlatformFall: Falling triggered.");
+            falling = true;
+
+            // Enable full physics drop
+            Rigidbody2D rb = platform.GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.bodyType = RigidbodyType2D.Dynamic;
+                rb.constraints = RigidbodyConstraints2D.None;
+                rb.gravityScale = 1f; // Ensure normal gravity
+            }
+
+            // Optionally destroy the platform after 3 seconds (remove if you want it to persist)
+            Destroy(platform.gameObject, 3f);
+        }
+        else
+        {
+            Debug.Log("[RisingPlatformZone] TriggerPlatformFall: Ignored, already falling or at initial position.");
+        }
     }
 }
 
