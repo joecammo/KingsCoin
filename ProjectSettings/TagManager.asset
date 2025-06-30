@@ -11,6 +11,7 @@ TagManager:
   - StartingPlatform
   - WebLink
   - PlatformAlpha
+  - PlatformReset
   layers:
   - Default
   - TransparentFX
